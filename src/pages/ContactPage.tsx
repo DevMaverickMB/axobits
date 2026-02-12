@@ -93,10 +93,19 @@ const ContactPage: React.FC = () => {
 
     window.addEventListener('layoutReady', handleLayoutReady);
 
+    // Fallback: if layoutReady already fired before this listener was registered
+    if ((window as any).__layoutReadyFired) {
+      setupAnimations();
+    }
 
+    // Safety net: if layoutReady never arrives, set up after 300ms anyway
+    const safetyTimeout = window.setTimeout(() => {
+      setupAnimations();
+    }, 300);
 
     return () => {
       window.removeEventListener('layoutReady', handleLayoutReady);
+      clearTimeout(safetyTimeout);
       if (ctx) ctx.revert();
     };
   }, []);

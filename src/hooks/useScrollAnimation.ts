@@ -151,10 +151,22 @@ export const useScrollAnimation = <T extends HTMLElement>(options: UseScrollAnim
 
     window.addEventListener('layoutReady', handleLayoutReady);
 
+    // Fallback: if layoutReady already fired before this listener was registered,
+    // set up animations immediately to avoid blank elements stuck at opacity:0
+    if ((window as any).__layoutReadyFired) {
+      setupAnimations();
+    }
 
+    // Safety net: if layoutReady never arrives (e.g. timing edge case on first
+    // navigation), set up animations after 300ms anyway. The isSetup guard
+    // prevents double-setup if the event already fired.
+    const safetyTimeout = window.setTimeout(() => {
+      setupAnimations();
+    }, 300);
 
     return () => {
       window.removeEventListener('layoutReady', handleLayoutReady);
+      clearTimeout(safetyTimeout);
       if (ctx) ctx.revert();
     };
   }, [type, duration, delay, start, end, scrub, markers, staggerAmount, parallaxSpeed]);

@@ -89,50 +89,78 @@ const BlogPage: React.FC = () => {
   const [activeCategory, setActiveCategory] = React.useState('All');
 
   useEffect(() => {
-    const ctx = gsap.context(() => {
-      // Header animation
-      gsap.fromTo(
-        '.blog-header > *',
-        { opacity: 0, y: 40 },
-        { opacity: 1, y: 0, duration: 0.8, stagger: 0.1, ease: 'power3.out' }
-      );
+    let ctx: gsap.Context | null = null;
+    let isSetup = false;
 
-      // Featured post animation
-      gsap.fromTo(
-        '.featured-post',
-        { opacity: 0, y: 60, scale: 0.98 },
-        {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: 1,
-          ease: 'power3.out',
-          scrollTrigger: {
-            trigger: '.featured-post',
-            start: 'top 85%',
-          },
-        }
-      );
+    const setupAnimations = () => {
+      if (isSetup || !pageRef.current) return;
+      isSetup = true;
 
-      // Blog cards animation
-      gsap.fromTo(
-        '.blog-card',
-        { opacity: 0, y: 40 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.6,
-          stagger: 0.1,
-          ease: 'power3.out',
-          scrollTrigger: {
-            trigger: '.blog-grid',
-            start: 'top 80%',
-          },
-        }
-      );
-    }, pageRef);
+      ctx = gsap.context(() => {
+        // Header animation
+        gsap.fromTo(
+          '.blog-header > *',
+          { opacity: 0, y: 40 },
+          { opacity: 1, y: 0, duration: 0.8, stagger: 0.1, ease: 'power3.out' }
+        );
 
-    return () => ctx.revert();
+        // Featured post animation
+        gsap.fromTo(
+          '.featured-post',
+          { opacity: 0, y: 60, scale: 0.98 },
+          {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            duration: 1,
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: '.featured-post',
+              start: 'top 85%',
+            },
+          }
+        );
+
+        // Blog cards animation
+        gsap.fromTo(
+          '.blog-card',
+          { opacity: 0, y: 40 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.6,
+            stagger: 0.1,
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: '.blog-grid',
+              start: 'top 80%',
+            },
+          }
+        );
+      }, pageRef);
+    };
+
+    const handleLayoutReady = () => {
+      setupAnimations();
+    };
+
+    window.addEventListener('layoutReady', handleLayoutReady);
+
+    // Fallback: if layoutReady already fired before this listener was registered
+    if ((window as any).__layoutReadyFired) {
+      setupAnimations();
+    }
+
+    // Safety net: if layoutReady never arrives, set up after 300ms anyway
+    const safetyTimeout = window.setTimeout(() => {
+      setupAnimations();
+    }, 300);
+
+    return () => {
+      window.removeEventListener('layoutReady', handleLayoutReady);
+      clearTimeout(safetyTimeout);
+      if (ctx) ctx.revert();
+    };
   }, []);
 
   const filteredPosts = activeCategory === 'All' 

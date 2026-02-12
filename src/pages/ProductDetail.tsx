@@ -142,51 +142,79 @@ const ProductDetail: React.FC = () => {
   useEffect(() => {
     if (!product) return;
 
-    const ctx = gsap.context(() => {
-      // Hero animations
-      gsap.fromTo(
-        '.product-hero-content > *',
-        { opacity: 0, y: 40 },
-        { opacity: 1, y: 0, duration: 0.8, stagger: 0.1, ease: 'power3.out' }
-      );
+    let ctx: gsap.Context | null = null;
+    let isSetup = false;
 
-      // Feature cards
-      gsap.fromTo(
-        '.feature-card',
-        { opacity: 0, y: 40, scale: 0.95 },
-        {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: 0.6,
-          stagger: 0.1,
-          ease: 'power3.out',
-          scrollTrigger: {
-            trigger: '.features-section',
-            start: 'top 80%',
-          },
-        }
-      );
+    const setupAnimations = () => {
+      if (isSetup || !sectionRef.current) return;
+      isSetup = true;
 
-      // Stats animation
-      gsap.fromTo(
-        '.stat-item',
-        { opacity: 0, scale: 0.8 },
-        {
-          opacity: 1,
-          scale: 1,
-          duration: 0.6,
-          stagger: 0.15,
-          ease: 'back.out(1.7)',
-          scrollTrigger: {
-            trigger: '.stats-section',
-            start: 'top 80%',
-          },
-        }
-      );
-    }, sectionRef);
+      ctx = gsap.context(() => {
+        // Hero animations
+        gsap.fromTo(
+          '.product-hero-content > *',
+          { opacity: 0, y: 40 },
+          { opacity: 1, y: 0, duration: 0.8, stagger: 0.1, ease: 'power3.out' }
+        );
 
-    return () => ctx.revert();
+        // Feature cards
+        gsap.fromTo(
+          '.feature-card',
+          { opacity: 0, y: 40, scale: 0.95 },
+          {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            duration: 0.6,
+            stagger: 0.1,
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: '.features-section',
+              start: 'top 80%',
+            },
+          }
+        );
+
+        // Stats animation
+        gsap.fromTo(
+          '.stat-item',
+          { opacity: 0, scale: 0.8 },
+          {
+            opacity: 1,
+            scale: 1,
+            duration: 0.6,
+            stagger: 0.15,
+            ease: 'back.out(1.7)',
+            scrollTrigger: {
+              trigger: '.stats-section',
+              start: 'top 80%',
+            },
+          }
+        );
+      }, sectionRef);
+    };
+
+    const handleLayoutReady = () => {
+      setupAnimations();
+    };
+
+    window.addEventListener('layoutReady', handleLayoutReady);
+
+    // Fallback: if layoutReady already fired before this listener was registered
+    if ((window as any).__layoutReadyFired) {
+      setupAnimations();
+    }
+
+    // Safety net: if layoutReady never arrives, set up after 300ms anyway
+    const safetyTimeout = window.setTimeout(() => {
+      setupAnimations();
+    }, 300);
+
+    return () => {
+      window.removeEventListener('layoutReady', handleLayoutReady);
+      clearTimeout(safetyTimeout);
+      if (ctx) ctx.revert();
+    };
   }, [product]);
 
   if (!product) {

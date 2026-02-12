@@ -15,8 +15,17 @@ interface LayoutProps {
 
 const LayoutContent: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
-  const { scrollTo } = useSmoothScroll();
+  const { scrollTo, lenis } = useSmoothScroll();
   const timeoutRefs = useRef<number[]>([]);
+
+  // Use refs for scrollTo/lenis so useLayoutEffect doesn't depend on their identity.
+  // scrollTo changes once when Lenis initializes (null→instance); without refs that
+  // extra identity change would re-run useLayoutEffect, killing all ScrollTriggers and
+  // resetting __layoutReadyFired at an unexpected time during the initial load sequence.
+  const scrollToRef = useRef(scrollTo);
+  const lenisRef = useRef(lenis);
+  scrollToRef.current = scrollTo;
+  lenisRef.current = lenis;
 
   // CRITICAL: Handle layoutReady dispatch coordination
   // Simplified logic: Always check __lenisReady flag instead of tracking first mount vs navigation.
@@ -32,6 +41,9 @@ const LayoutContent: React.FC<LayoutProps> = ({ children }) => {
 
       console.log('[Layout] layoutReady event dispatched');
       window.dispatchEvent(new CustomEvent('layoutReady'));
+
+      // Immediate refresh so newly-created ScrollTriggers get correct positions
+      ScrollTrigger.refresh(true);
 
       // Staggered refresh strategy to handle components setting up at different times
       timeoutRefs.current.push(
@@ -91,11 +103,16 @@ const LayoutContent: React.FC<LayoutProps> = ({ children }) => {
     // With smooth scrolling (Lenis), this can leave you "past" the new page's content,
     // making the route look blank until a hard refresh resets scroll.
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    scrollTo(0, { duration: 0, immediate: true });
+    scrollToRef.current(0, { duration: 0, immediate: true });
+
+    // Recalculate Lenis dimensions after pin spacers are removed
+    if (lenisRef.current) {
+      lenisRef.current.resize();
+    }
 
     // Avoid stale trigger state (especially after pinned sections).
     ScrollTrigger.clearScrollMemory();
-  }, [location.pathname, scrollTo]);
+  }, [location.pathname]);
 
   // Fallback Intersection Observer for .reveal elements (non-GSAP animations)
   useEffect(() => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ArrowRight, MessageSquareCode, Map, BarChart3, FileCode } from 'lucide-react';
@@ -70,19 +70,33 @@ const HorizontalShowcase: React.FC = () => {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    let ctx: gsap.Context | null = null;
+  // Store GSAP context in a ref so the useLayoutEffect cleanup can access it.
+  // useLayoutEffect cleanup runs during React's deletion phase, BEFORE removeChild.
+  // This is critical because ScrollTrigger pin: true reparents the <section> into
+  // a pin-spacer div. If we only clean up in useEffect, React tries removeChild
+  // on a node that has been moved, crashing the entire tree.
+  const ctxRef = useRef<gsap.Context | null>(null);
 
+  useLayoutEffect(() => {
+    return () => {
+      if (ctxRef.current) {
+        ctxRef.current.revert();
+        ctxRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     const setupAnimations = () => {
       if (!containerRef.current || !scrollerRef.current) return;
 
       // Clean up any existing context first
-      if (ctx) {
-        ctx.revert();
-        ctx = null;
+      if (ctxRef.current) {
+        ctxRef.current.revert();
+        ctxRef.current = null;
       }
 
-      ctx = gsap.context(() => {
+      ctxRef.current = gsap.context(() => {
         // Header parallax - using fromTo for proper reversing
         gsap.fromTo(
           headerRef.current,
@@ -152,9 +166,15 @@ const HorizontalShowcase: React.FC = () => {
       setupAnimations();
     }
 
+    // Safety net: if layoutReady never arrives, set up after 300ms anyway
+    const safetyTimeout = window.setTimeout(() => {
+      setupAnimations();
+    }, 300);
+
     return () => {
       window.removeEventListener('layoutReady', handleLayoutReady);
-      if (ctx) ctx.revert();
+      clearTimeout(safetyTimeout);
+      // ctx cleanup is handled by useLayoutEffect above
     };
   }, []);
 

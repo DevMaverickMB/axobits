@@ -178,8 +178,14 @@ const HeroEnhanced: React.FC = () => {
       setupScrollAnimations();
     }
 
+    // Safety net: if layoutReady never arrives, set up after 300ms anyway
+    const safetyTimeout = window.setTimeout(() => {
+      setupScrollAnimations();
+    }, 300);
+
     return () => {
       window.removeEventListener('layoutReady', handleLayoutReady);
+      clearTimeout(safetyTimeout);
       if (initialCtx) initialCtx.revert();
       if (scrollCtx) scrollCtx.revert();
     };

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Lenis from 'lenis';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -75,7 +75,7 @@ export const SmoothScrollProvider: React.FC<SmoothScrollProviderProps> = ({ chil
     };
   }, []);
 
-  const scrollTo = (
+  const scrollTo = useCallback((
     target: string | number | HTMLElement,
     options?: { offset?: number; duration?: number; immediate?: boolean }
   ) => {
@@ -86,10 +86,12 @@ export const SmoothScrollProvider: React.FC<SmoothScrollProviderProps> = ({ chil
         immediate: options?.immediate ?? false,
       });
     }
-  };
+  }, [lenis]);
+
+  const contextValue = useMemo(() => ({ lenis, isReady, scrollTo }), [lenis, isReady, scrollTo]);
 
   return (
-    <SmoothScrollContext.Provider value={{ lenis, isReady, scrollTo }}>
+    <SmoothScrollContext.Provider value={contextValue}>
       {children}
     </SmoothScrollContext.Provider>
   );
